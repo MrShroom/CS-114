@@ -105,7 +105,7 @@ namespace Task1and2 {
 
     double taskTwoTwoDensityFuntion(double * x, int size)
     {
-        return 1.0 / (PI * PI);
+        return 1.0 / (2 * PI);
     }
 
     double sovleForSBar(SolverResults * results)

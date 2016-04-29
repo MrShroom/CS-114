@@ -27,9 +27,6 @@
     <ClCompile Include="mainPart1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="simplept.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MonteCarloIntegrationSolver.h">
