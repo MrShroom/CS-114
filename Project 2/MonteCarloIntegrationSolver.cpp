@@ -1,6 +1,5 @@
 #include "MonteCarloIntegrationSolver.h"
 
-
 MonteCarloIntegrationSolver::MonteCarloIntegrationSolver()
 {
 }
@@ -11,7 +10,7 @@ SolverResults_t* MonteCarloIntegrationSolver::solve()
 	double x = 0.0;
 	double sum_of_I = 0.0;
 	
-	for (int i = 0; i < NUMBER_OF_SAMPLES; i++)
+	for (int i = 0; i < m_number_of_samples; i++)
 	{
 		switch (m_curreunt_distribution)
 		{
@@ -26,10 +25,10 @@ SolverResults_t* MonteCarloIntegrationSolver::solve()
 			break;
 		}
 
-		results->I[i] = m_funtion_solve(x) / m_funtion_density(x);
+		results->I.push_back(m_funtion_solve(x) / m_funtion_density(x));
 		sum_of_I += results->I[i];
 	}
-	results->I_bar = sum_of_I / NUMBER_OF_SAMPLES;
+	results->I_bar = sum_of_I / m_number_of_samples;
 	return results;
 }
 
@@ -39,7 +38,9 @@ SolverResults_t * MonteCarloIntegrationSolver::solveArr(int arraySize)
     double *x = new double[arraySize];
     double sum_of_I = 0.0;
 
-    for (int i = 0; i < NUMBER_OF_SAMPLES; i++)
+    results->I.clear();
+
+    for (int i = 0; i < m_number_of_samples; i++)
     {
         for (int j = 0; j < arraySize; j++)
         {
@@ -56,10 +57,10 @@ SolverResults_t * MonteCarloIntegrationSolver::solveArr(int arraySize)
                 break;
             }
         }
-        results->I[i] = m_funtion_solve_arr(x, arraySize) / m_funtion_density_arr(x, arraySize);
+        results->I.push_back(m_funtion_solve_arr(x, arraySize) / m_funtion_density_arr(x, arraySize));
         sum_of_I += results->I[i];
     }
-    results->I_bar = sum_of_I / NUMBER_OF_SAMPLES;
+    results->I_bar = sum_of_I / m_number_of_samples;
     return results;
 }
 
@@ -72,6 +73,11 @@ void MonteCarloIntegrationSolver::setFuntion(function_ptr funtion_solve)
 void MonteCarloIntegrationSolver::setFuntion(function_ptr_array function_solve_array)
 {
     m_funtion_solve_arr = function_solve_array; 
+}
+
+void MonteCarloIntegrationSolver::setNumberOfSamples(int number_of_samples)
+{
+    m_number_of_samples = number_of_samples;
 }
 
 void MonteCarloIntegrationSolver::setDensityFunctionAsExp(function_ptr funtion_density, double lambda)

@@ -1,7 +1,6 @@
 #pragma once
 #include <random>
-
-#define NUMBER_OF_SAMPLES 100000
+#include <vector>
 
 typedef double(*function_ptr)(double);
 typedef double(*function_ptr_array)(double* , int );
@@ -13,7 +12,7 @@ enum Distro
 };
 
 typedef struct SolverResults {
-	double I[NUMBER_OF_SAMPLES];
+	std::vector<double> I;
 	double I_bar;
 } SolverResults_t ;
 
@@ -25,6 +24,7 @@ public:
 
 	void setFuntion(function_ptr funtion_slove);
     void setFuntion(function_ptr_array function_solve_array);
+    void setNumberOfSamples(int number_of_samples);
 
 	void setDensityFunctionAsExp(function_ptr funtion_density, double lambda);
 	void setDensityFunctionAsUni(function_ptr funtion_density, double a, double b);
@@ -38,7 +38,8 @@ private:
     function_ptr_array m_funtion_solve_arr;
 	function_ptr m_funtion_density;
     function_ptr_array m_funtion_density_arr;
-
+    
+    int  m_number_of_samples = 100000;
 	std::random_device rd;
 	std::mt19937 *m_generator = new std::mt19937(rd());
 	std::uniform_real_distribution<double> *m_uniform_distribution = 0;
