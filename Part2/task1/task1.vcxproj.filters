@@ -15,28 +15,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="MonteCarloIntegrationSolver.cpp">
+    <ClCompile Include="simplept.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MainForPart1Task3.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mainPart1.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MainForPart1Task1and2.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="MonteCarloIntegrationSolver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MainForPart1Task3.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MainForPart1Task1and2.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

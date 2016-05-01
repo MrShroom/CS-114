@@ -1,4 +1,4 @@
-#include "MainForPart1Task1and2.h"
+#include "MainForPArt1Task1and2.h"
 
 namespace Task1and2 {
 
@@ -91,7 +91,7 @@ namespace Task1and2 {
 
     double taskTwoOneDensityFuntion(double * x, int size)
     {
-        return 1.0 / (PI * PI);
+        return 1 / pow(PI, 2);
     }
 
     double taskTwoTwoFuntion(double * x, int size)
@@ -105,7 +105,7 @@ namespace Task1and2 {
 
     double taskTwoTwoDensityFuntion(double * x, int size)
     {
-        return 1.0 / (2 * PI);
+        return 1.0 / (PI * PI);
     }
 
     double sovleForSBar(SolverResults * results)

@@ -1,4 +1,4 @@
-#include "MainForPArt1Task1and2.h"
+#include "MainForPart1Task1and2.h"
 #include "MainForPart1Task3.h"
 
 int main(int argc, char *argv[])
