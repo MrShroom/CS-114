@@ -44,7 +44,7 @@ struct Vec {
     bool operator== (const Vec &b) const 
     {
         
-        const double esp = std::numeric_limits<double>::epsilon();
+        const double esp = 1e-4; //std::numeric_limits<double>::epsilon();
         if (std::abs(x - b.x) > esp)
             return false;
         if (std::abs(y - b.y) > esp)
@@ -115,7 +115,7 @@ inline void createLocalCoord(const Vec &n, Vec &u, Vec &v, Vec &w) {
 }
 
 
-void uniformRandom(const Vec &normal,  Vec &i, double &pdf)  {
+void uniformRandom(const Vec &normal,  Vec &i)  {
     double z = std::sqrt(rng());
     double r = std::sqrt(1.0 - z * z);
     double phi = 2.0 * PI * rng();
@@ -126,7 +126,7 @@ void uniformRandom(const Vec &normal,  Vec &i, double &pdf)  {
     createLocalCoord(normal, u, v, w);
     i = ((u * x) + (v *y) + (w*z)).normalize();
 
-    pdf = z / (r * PI);
+    
 }
 
 /*
@@ -143,7 +143,8 @@ struct DiffuseBRDF : public BRDF {
 
     void sample(const Vec &n, const Vec &o, Vec &i, double &pdf) const {
         
-        uniformRandom(n, i, pdf);
+        uniformRandom(n, i);
+        pdf = n.dot(i) / PI;
     }
 
     Vec kd;
@@ -166,9 +167,9 @@ struct SpecularBRDF : public BRDF {
         return Vec();
     }
 
-    void sample(const Vec &n, const Vec &o, Vec &i, double &pdf) const {
-
-        i = mirroredDirection(n,o).normalize();
+    void sample(const Vec &n, const Vec &o, Vec &i, double &pdf) const 
+    {
+        i = mirroredDirection(n,o);
         pdf = 1.0;
     }
 
@@ -222,14 +223,14 @@ Vec receivedRadiance(const Ray &r, int depth, bool flag) {
     double t;                                   // Distance to intersection
     int id = 0;                                 // id of intersected sphere
 
-    if ( !intersect(r, t, id) ) return Vec();   // if miss, return black
+    if (!intersect(r, t, id)) return Vec();   // if miss, return black
     const Sphere &obj = spheres[id];            // the hit object
 
     Vec x = r.o + r.d*t;                        // The intersection point
     Vec o = (Vec() - r.d).normalize();          // The outgoing direction (= -r.d)
 
     Vec n = (x - obj.p).normalize();            // The normal direction
-    if ( n.dot(o) < 0 ) n = n*-1.0;
+    if (n.dot(o) < 0) n = n*-1.0;
 
     /*
     Tips
@@ -257,12 +258,11 @@ Vec receivedRadiance(const Ray &r, int depth, bool flag) {
         Vec o_i;
         double pdf;
         brdf.sample(n, o, o_i, pdf);
-        Ray y(x,o_i.normalize());
-        Vec reflected = receivedRadiance(y, depth + 1, false) * PI;
-        Vec eval = brdf.eval(n, o, o_i) * (1.0/p);
-        reflected.x *= eval.x ;
-        reflected.y *= eval.y ;
-        reflected.z *= eval.z ;
+        Ray y(x, o_i.normalize());
+        Vec reflected = receivedRadiance(y, depth + 1, false)
+            .mult(brdf.eval(n, o, o_i))
+            * (n.dot(o_i)
+                / (pdf*p));
         return Le + reflected;
     }
     return Le;
@@ -312,6 +312,6 @@ int main(int argc, char *argv[]) {
     for ( int i = 0; i<w*h; i++ )
         fprintf(f, "%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
     fclose(f);
-
+    
     return 0;
 }

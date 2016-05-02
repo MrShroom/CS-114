@@ -5,6 +5,7 @@
 #include <vector>
 #include <omp.h>
 #define PI 3.1415926535897932384626433832795
+#define eps 1e-4
 
 /*
  * Thread-safe random number generator
@@ -43,7 +44,7 @@ struct Vec {
     Vec operator* (double b) const      { return Vec(x*b, y*b, z*b); }
     bool operator== (const Vec &b) const 
     {
-        const double eps = 1e-4;// 2 * std::numeric_limits<double>::epsilon();
+        
         if (std::abs(x - b.x) > eps)
             return false;
         if (std::abs(y - b.y) > eps)
@@ -67,6 +68,7 @@ struct Ray {
 struct BRDF {
     virtual Vec eval(const Vec &n, const Vec &o, const Vec &i) const = 0;
     virtual void sample(const Vec &n, const Vec &o, Vec &i, double &pdf) const = 0;
+    virtual bool isSpecular() const = 0;
 };
 
 /*
@@ -96,7 +98,7 @@ struct Sphere {
 
     double intersect(const Ray &r) const { // returns distance, 0 if nohit
         Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
-        double t, eps = 1e-4, b = op.dot(r.d), det = b*b-op.dot(op)+rad*rad;
+        double t, b = op.dot(r.d), det = b*b-op.dot(op)+rad*rad;
         if ( det<0 ) return 0; else det = sqrt(det);
         return (t = b-det)>eps ? t : ((t = b+det)>eps ? t : 0);
     }
@@ -121,9 +123,9 @@ void uniformRandom(const Vec &normal,  Vec &i)  {
     double x = r * std::cos(phi);
     double y = r * std::sin(phi);
     Vec u, v, w;
+
     createLocalCoord(normal, u, v, w);
     i = ((u * x) + (v *y) + (w*z)).normalize();
-
     
 }
 
@@ -145,6 +147,9 @@ struct DiffuseBRDF : public BRDF {
         pdf = n.dot(i)/ PI;
     }
 
+    bool isSpecular() const {
+        return false;
+    }
     Vec kd;
 };
 
@@ -155,7 +160,7 @@ struct SpecularBRDF : public BRDF {
 
     Vec mirroredDirection(const Vec &n, const Vec &o_0) const
     {
-        return (n * 2.0 * n.dot(o_0) - o_0).normalize();
+        return n * 2.0 * n.dot(o_0) - o_0;
     }
 
     Vec eval(const Vec &n, const Vec &o, const Vec &i) const
@@ -171,6 +176,10 @@ struct SpecularBRDF : public BRDF {
         pdf = 1.0;
     }
 
+
+    bool isSpecular() const {
+        return true;
+    }
     Vec ks;
 };
 
@@ -242,6 +251,9 @@ double visiblity(const Vec &x,const Vec &y)
 
 };
 
+const int rrDepth = 5;
+const double survivalProbability = 0.9;
+
 /*
  * KEY FUNCTION: radiance estimator
  */
@@ -262,26 +274,28 @@ Vec receivedRadiance(const Ray &r, int depth, bool flag)
 
     Vec Le = obj.e;                             // Emitted radiance
     const BRDF &brdf = obj.brdf;                // Surface BRDF at x
-
-    const int rrDepth = 5;                      // Depth to start RR
-    const double survivalProbability = 0.9;     // Chance of surviving RR 
+    
     Vec y_1;                                    // Point sampled from light source
     Vec ny;                                     // normal at y_1
     double pdf1;                                // pdf at of sampling y_1
     Vec Light;                                  // Emitted radiance from light source
+
+    Vec directRadiance;
 
     /*
         Direct radiance
     */
     luminaireSample(x, y_1, ny, pdf1, Light);   // sample from light
     Vec omega_1 = (y_1 - x).normalize();        // omega from x to y
-    double r_squared = (x-y_1).dot(x -y_1);
+    double r_squared = (x - y_1).dot(x - y_1);
 
-    Vec directRadiance = Light.mult( brdf.eval(n, omega_1, o))
-        * visiblity(x,y_1) 
-        * n.dot(omega_1) 
+    directRadiance = Light.mult(brdf.eval(n, omega_1, o))
+        * visiblity(x, y_1)
+        * n.dot(omega_1)
         * (ny.dot(omega_1*-1)
         /(r_squared * pdf1));
+
+
 
     /*
         Indirect radiance
@@ -289,18 +303,31 @@ Vec receivedRadiance(const Ray &r, int depth, bool flag)
     double p = 1.0;
     if (depth > rrDepth)
         p = survivalProbability;
+
     Vec indirectRadiance;
     if (rng() < p)
     {
         Vec omega_2;
         double pdf2;
         brdf.sample(n, o, omega_2, pdf2);
-        Ray y(x,omega_2.normalize());
-        indirectRadiance =  receivedRadiance(y, depth + 1, false)
-            .mult(brdf.eval(n, o, omega_2)) 
+        Ray y(x, omega_2.normalize());
+        indirectRadiance = receivedRadiance(y, depth + 1, false)
+            .mult(brdf.eval(n, o, omega_2))
             * (n.dot(omega_2)
-            /(pdf2*p));
+                / (pdf2*p));
+    }    
+
+    if (visiblity(x, y_1) > eps                         //light is visible
+        && brdf.isSpecular()                            //we're using a specluar model
+        && (directRadiance + indirectRadiance) == Vec() //but we still have no light
+        )
+    {
+        directRadiance = Light
+            * n.dot(omega_1)
+            * (ny.dot(omega_1*-1)
+                / (r_squared * pdf1));
     }
+
     if(flag)//frist call we want to include radiance of object
         return  Le + directRadiance + indirectRadiance;
     return  directRadiance + indirectRadiance;

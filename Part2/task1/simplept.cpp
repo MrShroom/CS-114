@@ -114,7 +114,7 @@ void uniformRandom(const Vec &normal,  Vec &i, double &pdf)  {
     createLocalCoord(normal, u, v, w);
     i = (u * x) + (v *y) + (w*z);
 
-    pdf = z / (r * PI);
+    pdf = normal.dot(i)/ PI;
 }
 
 /*
@@ -176,9 +176,6 @@ bool intersect(const Ray &r, double &t, int &id) {
 }
 
 
-Vec reflectedRadiance(const Vec &x, const Vec &n, const Vec &omega, int depth, const BRDF &brdf);
-
-
 /*
  * KEY FUNCTION: radiance estimator
  */
@@ -222,14 +219,13 @@ Vec receivedRadiance(const Ray &r, int depth, bool flag) {
         Vec o_i;
         double pdf;
         brdf.sample(n, o, o_i, pdf);
-        Ray y(x,o_i.normalize());
-        Vec reflected = receivedRadiance(y, depth + 1, false);
-        Vec eval = brdf.eval(n, o, o_i);
-        reflected.x *= eval.x * (PI / p);
-        reflected.y *= eval.y * (PI / p);
-        reflected.z *= eval.z * (PI / p);
+        Ray y(x, o_i.normalize());
+        Vec reflected = receivedRadiance(y, depth + 1, false)
+            .mult(brdf.eval(n, o, o_i))
+            * (n.dot(o_i)
+                / (pdf*p));
         return Le + reflected;
-    }
+    } 
     return Le;
 }
 
@@ -277,6 +273,6 @@ int main(int argc, char *argv[]) {
     for ( int i = 0; i<w*h; i++ )
         fprintf(f, "%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
     fclose(f);
-
+    
     return 0;
 }

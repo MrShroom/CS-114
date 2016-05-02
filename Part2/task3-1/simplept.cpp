@@ -121,9 +121,9 @@ void uniformRandom(const Vec &normal,  Vec &i)  {
     double x = r * std::cos(phi);
     double y = r * std::sin(phi);
     Vec u, v, w;
+
     createLocalCoord(normal, u, v, w);
     i = ((u * x) + (v *y) + (w*z)).normalize();
-
     
 }
 
@@ -155,7 +155,7 @@ struct SpecularBRDF : public BRDF {
 
     Vec mirroredDirection(const Vec &n, const Vec &o_0) const
     {
-        return (n * 2.0 * n.dot(o_0) - o_0).normalize();
+        return n * 2.0 * n.dot(o_0) - o_0;
     }
 
     Vec eval(const Vec &n, const Vec &o, const Vec &i) const
@@ -167,7 +167,7 @@ struct SpecularBRDF : public BRDF {
 
     void sample(const Vec &n, const Vec &o, Vec &i, double &pdf) const {
 
-        i = mirroredDirection(n,o).normalize();
+        i = mirroredDirection(n,o);
         pdf = 1.0;
     }
 
@@ -289,6 +289,7 @@ Vec receivedRadiance(const Ray &r, int depth, bool flag)
     double p = 1.0;
     if (depth > rrDepth)
         p = survivalProbability;
+
     Vec indirectRadiance;
     if (rng() < p)
     {
@@ -301,7 +302,9 @@ Vec receivedRadiance(const Ray &r, int depth, bool flag)
             * (n.dot(omega_2)
             /(pdf2*p));
     }
-    return Le + directRadiance + indirectRadiance;
+    if(flag)
+        return Le + directRadiance + indirectRadiance;
+    return directRadiance + indirectRadiance;
 }
 
 
@@ -348,6 +351,6 @@ int main(int argc, char *argv[]) {
     for ( int i = 0; i<w*h; i++ )
         fprintf(f, "%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
     fclose(f);
-    system("convert .\\image.ppm win:");
+    
     return 0;
 }
