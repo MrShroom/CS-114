@@ -193,7 +193,10 @@ const DiffuseBRDF leftWall(Vec(.75,.25,.25)),
                   otherWall(Vec(.75,.75,.75)),
                   blackSurf(Vec(0.0,0.0,0.0)),
                   brightSurf(Vec(0.9,0.9,0.9));
-const SpecularBRDF shinySurf(Vec(0.999, 0.999, 0.999));
+const SpecularBRDF redshinySurf(Vec(0.999, 0.5, 0.5)),
+                   greenshinySurf(Vec(0.5, 0.999,0.5)),
+                   blueshinySurf(Vec(0.05, 0.5, 0.999)),
+                   shinySurf(Vec(0.999, 0.999, 0.999));
 
 // Scene: list of spheres
 const Sphere spheres[] = {
@@ -254,52 +257,6 @@ double visiblity(const Vec &x,const Vec &y)
 const int rrDepth = 5;
 const double survivalProbability = 0.9;
 
-Vec receivedRadianceSpec(const Ray &r, int depth, bool flag) {
-    double t;                                   // Distance to intersection
-    int id = 0;                                 // id of intersected sphere
-
-    if (!intersect(r, t, id)) return Vec();   // if miss, return black
-    const Sphere &obj = spheres[id];            // the hit object
-
-    Vec x = r.o + r.d*t;                        // The intersection point
-    Vec o = (Vec() - r.d).normalize();          // The outgoing direction (= -r.d)
-
-    Vec n = (x - obj.p).normalize();            // The normal direction
-    if (n.dot(o) < 0) n = n*-1.0;
-
-    /*
-    Tips
-
-    1. Other useful quantities/variables:
-    Vec Le = obj.e;                             // Emitted radiance
-    const BRDF &brdf = obj.brdf;                // Surface BRDF at x
-
-    2. Call brdf.sample() to sample an incoming direction and continue the recursion
-    */
-
-    Vec Le = obj.e;                             // Emitted radiance
-    const BRDF &brdf = obj.brdf;                // Surface BRDF at x
-
-    double p = 1.0;
-
-    if (depth > rrDepth)
-        p = survivalProbability;
-
-    if (rng() < p)
-    {
-        Vec o_i;
-        double pdf;
-        brdf.sample(n, o, o_i, pdf);
-        Ray y(x, o_i.normalize());
-        Vec reflected = receivedRadianceSpec(y, depth + 1, false)
-            .mult(brdf.eval(n, o, o_i))
-            * (n.dot(o_i)
-                / (pdf*p));
-
-        return Le + reflected;
-    }
-    return Le;
-}
 
 /*
  * KEY FUNCTION: radiance estimator
@@ -321,39 +278,30 @@ Vec receivedRadiance(const Ray &r, int depth, bool flag)
 
     Vec Le = obj.e;                             // Emitted radiance
     const BRDF &brdf = obj.brdf;                // Surface BRDF at x
-    
- 
-    Vec y_1;                                    // Point sampled from light source
-    Vec ny;                                     // normal at y_1
-    double pdf1;                                // pdf at of sampling y_1
-    Vec Light;                                  // Emitted radiance from light source
 
     Vec directRadiance;
 
     /*
         Direct radiance
     */
-    luminaireSample(x, y_1, ny, pdf1, Light);   // sample from light
-    Vec omega_1 = (y_1 - x).normalize();        // omega from x to y
-    double r_squared = (x - y_1).dot(x - y_1);
-    
-    
-    directRadiance = Light.mult(brdf.eval(n, omega_1, o))
-        * visiblity(x, y_1)
-        * n.dot(omega_1)
-        * (ny.dot(omega_1*-1)
-        /(r_squared * pdf1));
+    if (!brdf.isSpecular()) //we're using a specluar model      
+    {
+        Vec y_1;                                    // Point sampled from light source
+        Vec ny;                                     // normal at y_1
+        double pdf1;                                // pdf at of sampling y_1
+        Vec Light;                                  // Emitted radiance from light source
+        luminaireSample(x, y_1, ny, pdf1, Light);   // sample from light
+        Vec omega_1 = (y_1 - x).normalize();        // omega from x to y
+        double r_squared = (x - y_1).dot(x - y_1);
+        directRadiance = Light.mult(brdf.eval(n, omega_1, o)) * visiblity(x, y_1) * n.dot(omega_1) * (ny.dot(omega_1*-1) / (r_squared * pdf1));
+    }
 
-    
-    
-    double p = 1.0;
-    if (depth > rrDepth)
-        p = survivalProbability;
-
-    
     /*
         Indirect radiance
     */
+    double p = 1.0;
+    if (depth > rrDepth)
+        p = survivalProbability;
     Vec indirectRadiance;
     if (rng() < p)
     {
@@ -361,16 +309,8 @@ Vec receivedRadiance(const Ray &r, int depth, bool flag)
         double pdf2;
         brdf.sample(n, o, omega_2, pdf2);
         Ray y(x, omega_2.normalize());
-        indirectRadiance = receivedRadiance(y, depth + 1, false)
-            .mult(brdf.eval(n, o, omega_2))
-            * (n.dot(omega_2)
-                / (pdf2*p));
+        indirectRadiance = receivedRadiance(y, depth + 1,brdf.isSpecular()).mult(brdf.eval(n, o, omega_2)) * (n.dot(omega_2) / (pdf2*p));
     }    
-
-    if (brdf.isSpecular() && visiblity(x, y_1) > eps && directRadiance + indirectRadiance == Vec()) //we're using a specluar model      
-    {
-        return receivedRadianceSpec(r, 1, flag);
-    } 
 
     if(flag)//frist call we want to include radiance of object
         return  Le + directRadiance + indirectRadiance;
